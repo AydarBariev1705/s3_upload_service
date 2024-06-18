@@ -1,0 +1,43 @@
+version: "3.10"
+
+services:
+  redis:
+    image: redis:latest
+    container_name: rd01
+  celery:
+    build: .
+    volumes:
+      - .:/src
+    container_name: cl01
+    command: celery -A celery_test.celery worker --loglevel=info
+    links:
+      - redis
+  app:
+    container_name: app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    ports:
+      - 8000:8000
+    links:
+      - redis
+    depends_on:
+      - postgres
+      - redis
+
+  db:
+    image: postgres:15
+    container_name: db
+    command: -p 5432
+    expose:
+      - 5432
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=${DB_USER:?err}
+      - POSTGRES_PASSWORD=${DB_PASS:?err}
+      - POSTGRES_DB=${DB_NAME:?err}
+    volumes:
+      - ./postgres_db/:/var/lib/postgresql/data
