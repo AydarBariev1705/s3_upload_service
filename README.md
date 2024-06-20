@@ -12,7 +12,6 @@
 * **Celery**;
 * **Redis**;
 * **Botocore** (s3 storage).
-* **Celery**
 
 ## Сборка и запуск приложения
 1. Переименовать .env.template в .env
