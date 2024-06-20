@@ -1,10 +1,10 @@
 FROM python:3.11
 
-COPY requirements.txt requirements.txt
+COPY main/requirements.txt requirements.txt
 
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
-COPY . /app
+COPY ./main /app/main
 WORKDIR /app
 
-CMD ["uvicorn", "app:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main.app:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "8000"]

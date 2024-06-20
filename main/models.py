@@ -2,13 +2,10 @@ from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 import asyncio
 
-from database import Base, engine
+from main.database import Base, engine
 
 
 class ImageORM(Base):
-    """
-    Модель категории продукта
-    """
     __tablename__ = "images"
     id: Mapped[int] = mapped_column(
         primary_key=True,
@@ -32,6 +29,6 @@ async def async_main():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-#
-# if __name__ == '__main__':
-#     asyncio.run(async_main())
+
+if __name__ == '__main__':
+    asyncio.run(async_main())

@@ -1,15 +1,15 @@
 import aiofiles
 from celery import group
-from fastapi import FastAPI, WebSocket, UploadFile, Request
+from fastapi import FastAPI, UploadFile
+
 from sqlalchemy import select
 import os
-from config import FILE_URL, ALLOWED_EXTENSION
+from main.config import FILE_URL, ALLOWED_EXTENSION
 
-from celery_test import process_image, celery
-from database import async_session
-from models import ImageORM
+from main.celery_test import process_image, celery
+from main.database import async_session
+from main.models import ImageORM
 
-# uvicorn app:app --reload
 
 app = FastAPI()
 
@@ -19,22 +19,49 @@ async def upload_file(file: UploadFile, project_id: int):
     extension = file.filename.split('.')[-1]
     if extension in ALLOWED_EXTENSION:
         async with async_session() as session:
-            project = await session.scalar(select(ImageORM).where(ImageORM.project_id == project_id))
+            project = await session.scalar(
+                select(ImageORM).where(ImageORM.project_id == project_id),
+            )
         if not project:
             async with aiofiles.open(file.filename, 'wb', ) as out_file:
                 content = await file.read()
                 task_group = group(
-                    process_image.s(image_data=content, filename=file.filename, sizes=None),
-                    process_image.s(image_data=content, filename='thumb_' + file.filename, sizes=(150, 120)),
-                    process_image.s(image_data=content, filename='big_thumb_' + file.filename, sizes=(700, 700)),
-                    process_image.s(image_data=content, filename='big_1920_' + file.filename, sizes=(1920, 1080)),
-                    process_image.s(image_data=content, filename='d2500_' + file.filename, sizes=(2500, 2500)),
+                    process_image.s(
+                        image_data=content,
+                        filename=file.filename,
+                        sizes=None,
+                    ),
+                    process_image.s(
+                        image_data=content,
+                        filename='thumb_' + file.filename,
+                        sizes=(150, 120),
+                    ),
+                    process_image.s(
+                        image_data=content,
+                        filename='big_thumb_' + file.filename,
+                        sizes=(700, 700),
+                    ),
+                    process_image.s(
+                        image_data=content,
+                        filename='big_1920_' + file.filename,
+                        sizes=(1920, 1080),
+                    ),
+                    process_image.s(
+                        image_data=content,
+                        filename='d2500_' + file.filename,
+                        sizes=(2500, 2500),
+                    ),
                 )
 
                 result = task_group.apply_async()
                 result.save()
                 async with async_session() as session:
-                    session.add(ImageORM(project_id=project_id, filename=file.filename, celery_id=result.id))
+                    session.add(ImageORM(
+                        project_id=project_id,
+                        filename=file.filename,
+                        celery_id=result.id,
+                    )
+                    )
                     await session.commit()
             os.remove(file.filename)
             return {
@@ -53,7 +80,8 @@ async def upload_file(file: UploadFile, project_id: int):
 @app.get('/projects/{project_id}/images', )
 async def get_status(project_id: int):
     async with async_session() as session:
-        image = await session.scalar(select(ImageORM).where(ImageORM.project_id == project_id))
+        image = await session.scalar(
+            select(ImageORM).where(ImageORM.project_id == project_id),)
     if image:
         result = celery.GroupResult.restore(image.celery_id)
         if result:
@@ -80,8 +108,13 @@ async def get_status(project_id: int):
                      },
                 ],
             }, 200
+        else:
+            return {
+                'error': f'Celery id not found'
+            }, 404
 
     else:
         return {
             'error': f'Project id: {project_id} not found'
         }, 404
+

@@ -2,14 +2,14 @@ import time
 
 from celery import Celery
 
-from image_conf import make_resize
+from main.image_conf import make_resize
+from main.config import REDIS
 
-# celery -A celery_test.celery worker --loglevel=info
 
 celery = Celery(
     'celery_test',
-    broker='redis://localhost:6379/0',
-    backend='redis://localhost:6379/0',
+    broker=f'redis://{REDIS}:6379/0',
+    backend=f'redis://{REDIS}:6379/0',
 )
 
 

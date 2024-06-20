@@ -18,4 +18,5 @@ ENDPOINT_URL = os.environ.get("ENDPOINT_URL")
 BUCKET_NAME = os.environ.get("BUCKET_NAME")
 FILE_URL = os.environ.get("FILE_URL")
 
-ALLOWED_EXTENSION = ['jpeg', 'jpg','tif', 'png', 'tiff', 'gif', 'bmp',]
+ALLOWED_EXTENSION = ['jpeg', 'jpg', 'tif', 'png', 'tiff', 'gif', 'bmp',]
+REDIS = os.environ.get("REDIS")
