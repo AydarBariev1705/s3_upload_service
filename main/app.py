@@ -4,12 +4,11 @@ from fastapi import FastAPI, UploadFile
 
 from sqlalchemy import select
 import os
-from main.config import FILE_URL, ALLOWED_EXTENSION
+from main.config import FILE_URL, ALLOWED_EXTENSION, PREFIX_SIZES
 
 from main.celery_test import process_image, celery
 from main.database import async_session
 from main.models import ImageORM
-
 
 app = FastAPI()
 
@@ -28,39 +27,20 @@ async def upload_file(file: UploadFile, project_id: int):
                 task_group = group(
                     process_image.s(
                         image_data=content,
-                        filename=file.filename,
-                        sizes=None,
-                    ),
-                    process_image.s(
-                        image_data=content,
-                        filename='thumb_' + file.filename,
-                        sizes=(150, 120),
-                    ),
-                    process_image.s(
-                        image_data=content,
-                        filename='big_thumb_' + file.filename,
-                        sizes=(700, 700),
-                    ),
-                    process_image.s(
-                        image_data=content,
-                        filename='big_1920_' + file.filename,
-                        sizes=(1920, 1080),
-                    ),
-                    process_image.s(
-                        image_data=content,
-                        filename='d2500_' + file.filename,
-                        sizes=(2500, 2500),
-                    ),
+                        filename=key + file.filename,
+                        sizes=value,
+                    )
+                    for key, value in PREFIX_SIZES.items()
                 )
-
                 result = task_group.apply_async()
                 result.save()
                 async with async_session() as session:
-                    session.add(ImageORM(
-                        project_id=project_id,
-                        filename=file.filename,
-                        celery_id=result.id,
-                    )
+                    session.add(
+                        ImageORM(
+                            project_id=project_id,
+                            filename=file.filename,
+                            celery_id=result.id,
+                        )
                     )
                     await session.commit()
             os.remove(file.filename)
@@ -81,7 +61,12 @@ async def upload_file(file: UploadFile, project_id: int):
 async def get_status(project_id: int):
     async with async_session() as session:
         image = await session.scalar(
-            select(ImageORM).where(ImageORM.project_id == project_id),)
+            select(
+                ImageORM
+            ).where(
+                ImageORM.project_id == project_id
+            ),
+        )
     if image:
         result = celery.GroupResult.restore(image.celery_id)
         if result:
@@ -117,4 +102,3 @@ async def get_status(project_id: int):
         return {
             'error': f'Project id: {project_id} not found'
         }, 404
-
